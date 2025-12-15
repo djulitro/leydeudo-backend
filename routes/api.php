@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Mantenedor de usuarios.
     Route::post('/users', [UserController::class, 'createUser'])->middleware('permission:users.create');
+    Route::get('/users/{id_user}', [UserController::class, 'getById'])->middleware('permission:users.edit,users.view');
     Route::put('/users/{id_user}', [UserController::class, 'updateUser'])->middleware('permission:users.edit');
     Route::put('/users/{id_user}/disable', [UserController::class, 'disable'])->middleware('permission:users.edit');
     Route::put('/users/{id_user}/activate', [UserController::class, 'activate'])->middleware('permission:users.edit');

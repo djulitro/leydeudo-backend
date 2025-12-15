@@ -21,6 +21,18 @@ class UserController extends Controller
         ]);
     }
 
+    public function getById(int $id_user)
+    {
+        $user = (new UserService())->getById($id_user);
+
+        $user->load('roles');
+
+        return response()->json([
+            'message' => 'Usuario obtenido correctamente',
+            'data' => $user,
+        ]);
+    }
+
     public function createUser(UserCreateRequest $request)
     {
         $data = $request->safe()->all();
