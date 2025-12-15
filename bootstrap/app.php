@@ -12,10 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->api(prepend: [
-            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-        ]);
-
+        // Para APIs con Bearer token, no necesitamos EnsureFrontendRequestsAreStateful
+        // Solo lo usaríamos si estuviéramos usando sesiones con el frontend
+        
         // Registrar alias de middleware personalizado
         $middleware->alias([
             'permission' => \App\Http\Middleware\CheckPermission::class,

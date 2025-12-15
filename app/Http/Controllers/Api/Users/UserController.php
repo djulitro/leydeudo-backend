@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Users;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\UserCreateRequest;
 use App\Http\Requests\User\UserUpdateRequest;
+use App\Models\Role;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -33,12 +34,20 @@ class UserController extends Controller
             ], 403);
         }
 
-        $user = (new UserService())->createUser($data);
+        $result = (new UserService())->createUser($data);
 
-        return response()->json([
+        $response = [
             'message' => 'Usuario creado exitosamente',
-            'user' => $user,
-        ], 201);
+            'user' => $result['user'],
+        ];
+
+        // Agregar token si existe (usuario sin contraseña)
+        if ($result['reset_token']) {
+            $response['reset_token'] = $result['reset_token'];
+            $response['reset_url'] = config('app.frontend_url') . '/reset-password/' . $result['reset_token'];
+        }
+
+        return response()->json($response, 201);
     }
 
     public function updateUser(int $id_user, UserUpdateRequest $request)
@@ -68,6 +77,25 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Usuario desactivado exitosamente',
+        ]);
+    }
+
+    public function activate(int $id_user)
+    {
+        (new UserService())->activate($id_user);
+
+        return response()->json([
+            'message' => 'Usuario activado exitosamente',
+        ]);
+    }
+
+    public function getRoles()
+    {
+        $roles = Role::all();
+
+        return response()->json([
+            'message' => 'Roles obtenidos correctamente',
+            'data' => $roles->toArray()
         ]);
     }
 }

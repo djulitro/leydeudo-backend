@@ -2,11 +2,16 @@
 
 namespace App\Services;
 
+use App\Mail\FirstLoginMail;
+use App\Models\PasswordResetToken;
 use App\Models\Role;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class UserService
 {
@@ -20,11 +25,13 @@ class UserService
         return User::find($id);
     }
 
-    public function createUser(array $data): User
+    public function createUser(array $data): array
     {
+        $password = $data['password'] ?? Str::random(16);
+        
         $user = User::create([
             'email' => $data['email'],
-            'password' => Hash::make($data['password']),
+            'password' => Hash::make($password),
             'nombre' => $data['nombre'],
             'apellidos' => $data['apellidos'],
             'rut' => $data['rut'],
@@ -35,7 +42,48 @@ class UserService
 
         $this->syncRole($user, $data['role_slug']);
 
-        return $user;
+        $resetToken = null;
+        if (!isset($data['password'])) {
+            $resetToken = $this->generateFirstLoginToken($user);
+        }
+
+        return [
+            'user' => $user->load('roles'),
+            'reset_token' => $resetToken ? $resetToken->token : null,
+        ];
+    }
+
+    /**
+     * Generar token de primer login para el usuario y enviar email
+     */
+    private function generateFirstLoginToken(User $user): PasswordResetToken
+    {
+        $token = PasswordResetToken::generateToken();
+        
+        $resetToken = PasswordResetToken::create([
+            'user_id' => $user->id,
+            'token' => $token,
+            'type' => 'first_login',
+            'expires_at' => now()->addDays(7), // Token válido por 7 días
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
+
+        // Generar URL de reset
+        $resetUrl = config('app.frontend_url') . '/reset-password/' . $resetToken->token;
+
+        // Enviar email
+        try {
+            Mail::to($user->email)->send(new FirstLoginMail($user, $resetUrl, $resetToken->token));
+        } catch (\Exception $e) {
+            // Log del error pero no fallar la creación del usuario
+            Log::error('Error al enviar email de primer login', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+
+        return $resetToken;
     }
 
     public function updateUser(int $id, array $data): User
@@ -72,6 +120,17 @@ class UserService
         }
 
         $user->update(['estado' => 0]);
+    }
+
+    public function activate(int $id): void
+    {
+        $user = $this->getById($id);
+
+        if (!$user) {
+            throw new \Exception("Usuario no encontrado");
+        }
+
+        $user->update(['estado' => 1]);
     }
 
     private function syncRole(User $user, string $roleSlug): void

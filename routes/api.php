@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Auth\PasswordResetController;
 use App\Http\Controllers\Api\Users\AuthController;
 use App\Http\Controllers\Api\Users\UserConfigController;
 use App\Http\Controllers\Api\Users\UserController;
@@ -24,6 +25,10 @@ Route::get('/', function () {
 // Rutas públicas de autenticación
 Route::post('/login', [AuthController::class, 'login']);
 
+// Rutas públicas de reset de contraseña
+Route::post('/password/validate-token', [PasswordResetController::class, 'validateToken']);
+Route::post('/password/reset', [PasswordResetController::class, 'resetPassword']);
+
 // Rutas protegidas
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
@@ -38,6 +43,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Mantenedor de usuarios.
     Route::post('/users', [UserController::class, 'createUser'])->middleware('permission:users.create');
     Route::put('/users/{id_user}', [UserController::class, 'updateUser'])->middleware('permission:users.edit');
-    Route::delete('/users/{id_user}', [UserController::class, 'disable'])->middleware('permission:users.delete');
+    Route::put('/users/{id_user}/disable', [UserController::class, 'disable'])->middleware('permission:users.edit');
+    Route::put('/users/{id_user}/activate', [UserController::class, 'activate'])->middleware('permission:users.edit');
     Route::get('/users', [UserController::class, 'listUsers'])->middleware('permission:users.view');
+
+    // Ruta para obtener los roles
+    Route::get('/roles', [UserController::class, 'getRoles'])->middleware('permission:users.create');
 });
